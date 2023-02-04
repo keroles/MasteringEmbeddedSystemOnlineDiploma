@@ -83,8 +83,10 @@ __attribute ((naked)) void PendSV_Handler()
 	//====================================
 	//Restore the Context of the Next Task
 	//====================================
+	if (OS_Control.NextTask != NULL){
 	OS_Control.CurrentTask = OS_Control.NextTask ;
 	OS_Control.NextTask = NULL ;
+	}
 
 	__asm volatile("mov r11,%0 " : : "r" (*(OS_Control.CurrentTask->Current_PSP))  );
 	OS_Control.CurrentTask->Current_PSP++ ;
@@ -483,6 +485,40 @@ void MYRTOS_Update_TasksWaitingTime()
 
 
 
+MYRTOS_errorID MYRTOS_AcquireMutex(Mutex_ref* Mref , Task_ref* Tref)
+{
+	if(Mref->CurrentTUser == NULL) //not used
+	{
+		Mref->CurrentTUser = Tref ;
+	}else
+	{
+		if(Mref->NextTUser == NULL)
+		{
+			Mref->NextTUser = Tref ;
+			//move to Suspend state until be released
+			Tref->TaskState = Suspend ;
+			//to be suspended immediately
+			MYRTOS_OS_SVC_Set(SVC_terminateTask);
+		}else
+		{
+			return MutexisReacedToMaxNumberOfUsers ;
+		}
+
+	}
+	return NoError ;
+}
+void MYRTOS_ReleaseMutex(Mutex_ref* Mref)
+{
+	if(Mref->CurrentTUser != NULL)
+	{
+		Mref->CurrentTUser = Mref->NextTUser  ;
+		Mref->NextTUser  = NULL ;
+		Mref->CurrentTUser->TaskState = Waiting ;
+		MYRTOS_OS_SVC_Set(SVC_Activatetask);
+
+	}
+
+}
 
 
 

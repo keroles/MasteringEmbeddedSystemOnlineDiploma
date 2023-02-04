@@ -17,7 +17,8 @@
 typedef enum{
 	NoError,
 	Ready_Queue_init_error,
-	Task_exceeded_StackSize
+	Task_exceeded_StackSize,
+	MutexisReacedToMaxNumberOfUsers
 
 }MYRTOS_errorID;
 
@@ -46,6 +47,13 @@ struct{
 	}TimingWaiting;
 }Task_ref;
 
+typedef struct {
+	unsigned char* Ppayload;
+	unsigned int   PayloadSize ;
+	Task_ref* 	   CurrentTUser ;
+	Task_ref* 	   NextTUser ;
+	char 		   MutexName[30]  ;
+} Mutex_ref;
 
 #define element_type Task_ref*
 
@@ -58,4 +66,6 @@ void MYRTOS_TerminateTask (Task_ref* Tref);
 void MYRTOS_STARTOS() ;
 void MYRTOS_TaskWait(unsigned int NoTICKS,Task_ref* SelfTref);
 
+MYRTOS_errorID MYRTOS_AcquireMutex(Mutex_ref* Mref , Task_ref* Tref);
+void MYRTOS_ReleaseMutex(Mutex_ref* Mref);
 #endif /* INC_SCHEDULER_H_ */
