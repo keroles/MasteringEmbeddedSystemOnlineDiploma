@@ -35,53 +35,85 @@
 
 Task_ref Task1, Task2, Task3, Task4 ;
 unsigned char Task1LED,Task2LED,Task3LED,Task4LED ;
+Mutex_ref Mutex1 ;
+unsigned char payload[3] = {1,2,3} ;
 
 void task1()
 {
 	static int Count = 0 ;
 	while (1){
-		//Task 1 Code
 		Task1LED ^= 1;
 		Count++ ;
-		if (Count == 30 )
+		if (Count == 100 )
 		{
-			MYRTOS_ActivateTask(&Task4);
+			MYRTOS_AcquireMutex(&Mutex1, &Task1);
+			MYRTOS_ActivateTask(&Task2);
+		}
+		if (Count == 200 )
+		{
 			Count = 0 ;
-		} //100 ms
+			MYRTOS_ReleaseMutex(&Mutex1);
+		}
 	}
 }
 void task2()
 {
+	static int Count = 0 ;
 	while (1){
-		//Task 2 Code
 		Task2LED ^= 1;
-		//300 ms
-		MYRTOS_TaskWait(300, &Task2);
+		Count++ ;
+		if (Count == 100 )
+		{
+			MYRTOS_ActivateTask(&Task3);
+		}
+		if (Count == 200 )
+		{
+			Count = 0 ;
+			MYRTOS_TerminateTask(&Task2);
+
+		}
 	}
 }
 void task3()
 {
+	static int Count = 0 ;
 	while (1){
-		//Task 3 Code
 		Task3LED ^= 1;
-		//500 ms
-		MYRTOS_TaskWait(500, &Task3);
+		Count++ ;
+		if (Count == 100 )
+		{
+			MYRTOS_ActivateTask(&Task4);
+		}
+		if (Count == 200 )
+		{
+			Count = 0 ;
+			MYRTOS_TerminateTask(&Task3);
+
+		}
 	}
 }
 
 void task4()
 {
 	static int Count = 0 ;
-
 	while (1){
-		//Task 3 Code
 		Task4LED ^= 1;
 		Count++ ;
-		MYRTOS_TaskWait(1000, &Task4);
+		if (Count == 3 )
+		{
+			MYRTOS_AcquireMutex(&Mutex1, &Task4);
+		}
 
+		if (Count == 200 )
+		{
+			Count = 0 ;
+			MYRTOS_ReleaseMutex(&Mutex1);
+			MYRTOS_TerminateTask(&Task4);
 
+		}
 	}
 }
+//priority inversion Example
 int main(void)
 {
 
@@ -92,9 +124,13 @@ int main(void)
 	if (MYRTOS_init() != NoError)
 		while (1);
 
+	Mutex1.PayloadSize = 3 ;
+	Mutex1.Ppayload = payload ;
+	strcpy (Mutex1.MutexName, "Mutex1");
+
 	Task1.Stack_Size = 1024 ;
 	Task1.p_TaskEntry =task1;
-	Task1.priority= 3 ;
+	Task1.priority= 4 ;
 	strcpy (Task1.TaskName, "task_1");
 
 	Task2.Stack_Size = 1024 ;
@@ -104,7 +140,7 @@ int main(void)
 
 	Task3.Stack_Size = 1024 ;
 	Task3.p_TaskEntry =task3;
-	Task3.priority= 3 ;
+	Task3.priority= 2 ;
 	strcpy (Task3.TaskName, "task_3");
 
 	Task4.Stack_Size = 1024 ;
@@ -119,8 +155,7 @@ int main(void)
 
 
 	MYRTOS_ActivateTask(&Task1);
-	MYRTOS_ActivateTask(&Task2);
-	MYRTOS_ActivateTask(&Task3);
+
 
 	MYRTOS_STARTOS() ;
 
